@@ -51,6 +51,11 @@ def handle_all_messages(message):
     bot.reply_to(message, ai_response)
 
 # 4. ЗАПУСК БОТА
+# 4. ЗАПУСК БОТА
 if __name__ == "__main__":
+    print("Удаляем старый вебхук...")
+    bot.remove_webhook()  # Вот эта строчка всё починит!
+    
     print("Бот успешно запущен и слушает сообщения...")
     bot.infinity_polling()
+

@@ -50,10 +50,12 @@ def handle_text(message):
     ai_response = ask_openrouter(message.text)
     bot.reply_to(message, ai_response)
 
-if __name__ == "__main__":
+    if __name__ == "__main__":
     bot.remove_webhook()
     RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL")
     if RENDER_URL:
         bot.set_webhook(url=f"{RENDER_URL}/{TOKEN}")
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    
+    # ЖЕСТКО СТАВИМ ПОРТ 10000 ДЛЯ RENDER (БЕЗ ВСЯКИХ ТАБЛИЦ!)
+    app.run(host="0.0.0.0", port=10000)
+

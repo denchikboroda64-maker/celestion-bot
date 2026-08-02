@@ -5,7 +5,7 @@ import requests
 # 1. НАСТРОЙКА КЛЮЧЕЙ И ТОКЕНОВ
 # Скрипт сначала проверяет настройки Render (Environment), а если их там нет — берет прописанные ниже.
 OPENROUTER_API_KEY = os.getenv("AI_KEY") or "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"
-TELEGRAM_BOT_TOKEN = os.getenv("BOT_TOKEN") or "8761851210:AAGL39MaJj68VAMo4wv0SWxUcvsLtQXQK3M"
+TELEGRAM_BOT_TOKEN = "8761851210:AAGL39MaJj68VAMo4wv0SWxUcvsLtQXQK3M"
 
 # Инициализируем Телеграм-бота
 bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)

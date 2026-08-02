@@ -1,61 +1,67 @@
 import os
-import telebot
 import requests
+from flask import Flask, request
+import telebot
 
-# 1. НАСТРОЙКА КЛЮЧЕЙ И ТОКЕНОВ
-# Скрипт сначала проверяет настройки Render (Environment), а если их там нет — берет прописанные ниже.
-OPENROUTER_API_KEY = os.getenv("AI_KEY") or "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"
-TELEGRAM_BOT_TOKEN = "8761851210:AAGL39MaJj68VAMo4wv0SWxUcvsLtQXQK3M"
+# 1. ТОКЕНЫ И КЛЮЧИ (Берутся из Environment Variables на Render)
+TOKEN = os.environ.get('TELEGRAM_TOKEN') or os.environ.get('BOT_TOKEN')
+AI_KEY = os.environ.get('AI_KEY') or "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"
 
-# Инициализируем Телеграм-бота
-bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
+bot = telebot.TeleBot(TOKEN)
+app = Flask(__name__)
 
-# 2. ФУНКЦИЯ ДЛЯ ЗАПРОСА К OPENROUTER
+# Функция для отправки текста в OpenRouter
 def ask_openrouter(user_message):
     url = "https://openrouter.ai"
     headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Authorization": f"Bearer {AI_KEY}",
         "Content-Type": "application/json"
     }
     data = {
-        "model": "deepseek/deepseek-chat",  # Самая быстрая и дешевая модель на данный момент
+        "model": "deepseek/deepseek-chat",
         "messages": [
             {"role": "user", "content": user_message}
         ]
     }
-    
     try:
-        response = requests.post(url, headers=headers, json=data, timeout=30)
+        response = requests.post(url, headers=headers, json=data, timeout=20)
         if response.status_code == 200:
-            result = response.json()
-            return result['choices'][0]['message']['content']
-        else:
-            return f"Ошибка OpenRouter API: Код {response.status_code}\n{response.text}"
+            return response.json()['choices']['message']['content']
+        return f"Ошибка API: {response.status_code}"
     except Exception as e:
-        return f"Не удалось связаться с нейросетью: {str(e)}"
+        return f"Ошибка связи с ИИ: {str(e)}"
 
-# 3. ОБРАБОТКА КОМАНД И СООБЩЕНИЙ В ТЕЛЕГРАМЕ
+# Страница-заглушка для Render
+@app.route('/', methods=['GET'])
+def index():
+    return "Сервер активен!", 200
+
+# Маршрут для приема сообщений от Telegram
+@app.route('/' + TOKEN, methods=['POST'])
+def get_message():
+    json_string = request.stream.read().decode('utf-8')
+    update = telebot.types.Update.de_json(json_string)
+    bot.process_new_updates([update])
+    return "!", 200
+
+# Твоя команда /start
 @bot.message_handler(commands=['start'])
-def send_welcome(message):
-    bot.reply_to(message, "Привет! Я твой ИИ-помощник на базе DeepSeek. Напиши мне что-нибудь, и я отвечу.")
+def start(message):
+    bot.reply_to(message, "Привет! Теперь я официально работаю через Webhook на Render и готов отвечать на вопросы!")
 
+# ОБРАБОТКА ВСЕХ ОСТАЛЬНЫХ ТЕКСТОВЫХ СООБЩЕНИЙ (Запрос к нейросети)
 @bot.message_handler(func=lambda message: True)
-def handle_all_messages(message):
-    # Показываем статус, что бот печатает ответ
+def handle_text(message):
     bot.send_chat_action(message.chat.id, 'typing')
-    
-    # Отправляем текст в OpenRouter
     ai_response = ask_openrouter(message.text)
-    
-    # Возвращаем ответ пользователю в Telegram
     bot.reply_to(message, ai_response)
 
-# 4. ЗАПУСК БОТА
-# 4. ЗАПУСК БОТА
 if __name__ == "__main__":
-    print("Удаляем старый вебхук...")
-    bot.remove_webhook()  # Вот эта строчка всё починит!
+    bot.remove_webhook()
     
-    print("Бот успешно запущен и слушает сообщения...")
-    bot.infinity_polling()
-
+    RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL")
+    if RENDER_URL:
+        bot.set_webhook(url=f"{RENDER_URL}/{TOKEN}")
+    
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)

@@ -1,74 +1,56 @@
 import os
-import requests
-from flask import Flask, request
 import telebot
+import requests
 
-# 1. ВСТАВЬТЕ СЮДА ВАШ ТОКЕН ОТ BOTFATHER ВНУТРЬ КАВЫЧЕК
-TOKEN = "8761851210:AAGL39MaJj68VAMo4wv0SWxUcvsLtQXQK3M"
+# 1. НАСТРОЙКА КЛЮЧЕЙ И ТОКЕНОВ
+# Скрипт сначала проверяет настройки Render (Environment), а если их там нет — берет прописанные ниже.
+OPENROUTER_API_KEY = os.getenv("AI_KEY") or "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"
+TELEGRAM_BOT_TOKEN = os.getenv("BOT_TOKEN") or "8761851210:AAGL39MaJj68VAMo4wv0SWxUcvsLtQXQK3M"
 
-AI_KEY = "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"
+# Инициализируем Телеграм-бота
+bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
 
-
-bot = telebot.TeleBot(TOKEN)
-app = Flask(__name__)
-
-AI_URL = "https://openrouter.ai"
-
-# 2. ВСТАВЬТЕ СЮДА ВАШ КЛЮЧ ОТ OPENROUTER (начинается на sk-or-v1-...) ВНУТРЬ КАВЫЧЕК
-AI_KEY = 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
-
-@app.route('/', methods=['GET'])
-def index():
-    return "Нейросеть активна!", 200
-
-@app.route('/' + TOKEN, methods=['POST'])
-def get_message():
-    if request.headers.get('content-type') == 'application/json':
-        json_string = request.get_data().decode('utf-8')
-        if json_string:
-            update = telebot.types.Update.de_json(json_string)
-            if update and update.update_id:
-                bot.process_new_updates([update])
-    return "!", 200
-
-@bot.message_handler(commands=['start'])
-def start(message):
-    bot.reply_to(message, "Привет! Я Celestion — твой ИИ-ассистент DeepSeek. Спроси меня о чём угодно!")
-
-@bot.message_handler(content_types=['text'])
-def handle_text(message):
-    user_text = message.text
+# 2. ФУНКЦИЯ ДЛЯ ЗАПРОСА К OPENROUTER
+def ask_openrouter(user_message):
+    url = "https://openrouter.ai"
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "model": "deepseek/deepseek-chat",  # Самая быстрая и дешевая модель на данный момент
+        "messages": [
+            {"role": "user", "content": user_message}
+        ]
+    }
     
-    if message.chat.type != 'private':
-        if not (f"@{bot.get_me().username}" in user_text or (message.reply_to_message and message.reply_to_message.from_user.id == bot.get_me().id)):
-            return
-
-    bot.send_chat_action(message.chat.id, 'typing')
-
     try:
-        headers = {
-            "Authorization": f"Bearer {AI_KEY}",
-            "Content-Type": "application/json"
-        }
-        data = {
-            "model": "deepseek/deepseek-r1-distill-llama-8b:free",
-            "messages": [{"role": "user", "content": user_text}]
-        }
-        
-        response = requests.post(AI_URL, headers=headers, json=data, timeout=30)
-        res_json = response.json()
-        ai_response = res_json['choices']['message']['content']
-        
+        response = requests.post(url, headers=headers, json=data, timeout=30)
+        if response.status_code == 200:
+            result = response.json()
+            return result['choices'][0]['message']['content']
+        else:
+            return f"Ошибка OpenRouter API: Код {response.status_code}\n{response.text}"
     except Exception as e:
-        ai_response = "Извините, нейросеть сейчас перегружена запросами. Попробуйте еще раз чуть позже!"
+        return f"Не удалось связаться с нейросетью: {str(e)}"
 
+# 3. ОБРАБОТКА КОМАНД И СООБЩЕНИЙ В ТЕЛЕГРАМЕ
+@bot.message_handler(commands=['start'])
+def send_welcome(message):
+    bot.reply_to(message, "Привет! Я твой ИИ-помощник на базе DeepSeek. Напиши мне что-нибудь, и я отвечу.")
+
+@bot.message_handler(func=lambda message: True)
+def handle_all_messages(message):
+    # Показываем статус, что бот печатает ответ
+    bot.send_chat_action(message.chat.id, 'typing')
+    
+    # Отправляем текст в OpenRouter
+    ai_response = ask_openrouter(message.text)
+    
+    # Возвращаем ответ пользователю в Telegram
     bot.reply_to(message, ai_response)
 
+# 4. ЗАПУСК БОТА
 if __name__ == "__main__":
-    bot.remove_webhook()
-    # Берем ссылку на сервер напрямую или из настроек
-    RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL", "https://onrender.com")
-    bot.set_webhook(url=f"{RENDER_URL}/{TOKEN}")
-    
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    print("Бот успешно запущен и слушает сообщения...")
+    bot.infinity_polling()

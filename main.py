@@ -4,7 +4,10 @@ from flask import Flask, request
 import telebot
 
 # 1. ВСТАВЬТЕ СЮДА ВАШ ТОКЕН ОТ BOTFATHER ВНУТРЬ КАВЫЧЕК
-TOKEN = "СЮДА_ВСТАВЬТЕ_ТОКЕН_БОТА_ОТ_BOTFATHER"
+TOKEN = "8761851210:AAGL39MaJj68VAMo4wv0SWxUcvsLtQXQK3M"
+
+AI_KEY = "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"
+
 
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
@@ -12,7 +15,7 @@ app = Flask(__name__)
 AI_URL = "https://openrouter.ai"
 
 # 2. ВСТАВЬТЕ СЮДА ВАШ КЛЮЧ ОТ OPENROUTER (начинается на sk-or-v1-...) ВНУТРЬ КАВЫЧЕК
-AI_KEY = "СЮДА_ВСТАВЬТЕ_КЛЮЧ_ОТ_OPENROUTER"
+AI_KEY = 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
 
 @app.route('/', methods=['GET'])
 def index():

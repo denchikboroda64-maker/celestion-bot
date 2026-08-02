@@ -3,14 +3,12 @@ import requests
 from flask import Flask, request
 import telebot
 
-# 1. ТОКЕНЫ И КЛЮЧИ (Берутся из Environment Variables на Render)
-TOKEN = os.environ.get('TELEGRAM_TOKEN') or os.environ.get('BOT_TOKEN')
+TOKEN = os.environ.get('TELEGRAM_TOKEN') or os.environ.get('BOT_TOKEN') or "8761851210:AAGL39MaJj68VAMo4wv0SWxUcvsLtQXQK3M"
 AI_KEY = os.environ.get('AI_KEY') or "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"
 
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
-# Функция для отправки текста в OpenRouter
 def ask_openrouter(user_message):
     url = "https://openrouter.ai"
     headers = {
@@ -31,12 +29,10 @@ def ask_openrouter(user_message):
     except Exception as e:
         return f"Ошибка связи с ИИ: {str(e)}"
 
-# Страница-заглушка для Render
 @app.route('/', methods=['GET'])
 def index():
     return "Сервер активен!", 200
 
-# Маршрут для приема сообщений от Telegram
 @app.route('/' + TOKEN, methods=['POST'])
 def get_message():
     json_string = request.stream.read().decode('utf-8')
@@ -44,12 +40,10 @@ def get_message():
     bot.process_new_updates([update])
     return "!", 200
 
-# Твоя команда /start
 @bot.message_handler(commands=['start'])
 def start(message):
-    bot.reply_to(message, "Привет! Теперь я официально работаю через Webhook на Render и готов отвечать на вопросы!")
+    bot.reply_to(message, "Привет! Бот на вебхуках готов к работе!")
 
-# ОБРАБОТКА ВСЕХ ОСТАЛЬНЫХ ТЕКСТОВЫХ СООБЩЕНИЙ (Запрос к нейросети)
 @bot.message_handler(func=lambda message: True)
 def handle_text(message):
     bot.send_chat_action(message.chat.id, 'typing')
@@ -58,10 +52,8 @@ def handle_text(message):
 
 if __name__ == "__main__":
     bot.remove_webhook()
-    
     RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL")
     if RENDER_URL:
         bot.set_webhook(url=f"{RENDER_URL}/{TOKEN}")
-    
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)

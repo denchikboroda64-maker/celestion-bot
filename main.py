@@ -3,12 +3,16 @@ import requests
 from flask import Flask, request
 import telebot
 
-TOKEN = os.environ.get('TELEGRAM_TOKEN')
+# 1. ВСТАВЬТЕ СЮДА ВАШ ТОКЕН ОТ BOTFATHER ВНУТРЬ КАВЫЧЕК
+TOKEN = "СЮДА_ВСТАВЬТЕ_ТОКЕН_БОТА_ОТ_BOTFATHER"
+
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
 AI_URL = "https://openrouter.ai"
-AI_KEY = os.environ.get('AI_KEY', 'Bearer sk-or-v1-free-key') 
+
+# 2. ВСТАВЬТЕ СЮДА ВАШ КЛЮЧ ОТ OPENROUTER (начинается на sk-or-v1-...) ВНУТРЬ КАВЫЧЕК
+AI_KEY = "СЮДА_ВСТАВЬТЕ_КЛЮЧ_ОТ_OPENROUTER"
 
 @app.route('/', methods=['GET'])
 def index():
@@ -16,18 +20,17 @@ def index():
 
 @app.route('/' + TOKEN, methods=['POST'])
 def get_message():
-    # Защита: проверяем, что в запросе вообще есть данные
     if request.headers.get('content-type') == 'application/json':
         json_string = request.get_data().decode('utf-8')
-        if json_string:  # Если строка не пустая
+        if json_string:
             update = telebot.types.Update.de_json(json_string)
-            if update and update.update_id:  # Проверяем, что это корректный апдейт от Telegram
+            if update and update.update_id:
                 bot.process_new_updates([update])
     return "!", 200
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    bot.reply_to(message, "Привет! Я Celestion — ваш бесплатный ИИ-ассистент. Напишите мне любой вопрос, и я отвечу!")
+    bot.reply_to(message, "Привет! Я Celestion — твой ИИ-ассистент DeepSeek. Спроси меня о чём угодно!")
 
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
@@ -51,7 +54,7 @@ def handle_text(message):
         
         response = requests.post(AI_URL, headers=headers, json=data, timeout=30)
         res_json = response.json()
-        ai_response = res_json['choices'][0]['message']['content']
+        ai_response = res_json['choices']['message']['content']
         
     except Exception as e:
         ai_response = "Извините, нейросеть сейчас перегружена запросами. Попробуйте еще раз чуть позже!"
@@ -60,9 +63,9 @@ def handle_text(message):
 
 if __name__ == "__main__":
     bot.remove_webhook()
-    RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL")
-    if RENDER_URL:
-        bot.set_webhook(url=f"{RENDER_URL}/{TOKEN}")
+    # Берем ссылку на сервер напрямую или из настроек
+    RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL", "https://onrender.com")
+    bot.set_webhook(url=f"{RENDER_URL}/{TOKEN}")
     
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
